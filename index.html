@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My First Webpage</title>
+    <link rel="stylesheet" href="./styles/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <h1>TODO List</h1>
+    <div class="container">
+      <div class="modal-edit hidden">
+        <input type="text" class="input-edit">
+        <button class="btn-save">Save</button>
+      </div>
+      <input type="text" class="input" placeholder="Write new task here...">
+      <button class="btn-add">Add</button>
+      <ul class="list hidden">
+        <!-- <li class="list-item">Task 1 <button class="btn-complete">Complete</button><button class="btn-delete">Delete</button></li>
+        <li class="list-item">Task 2 <button class="btn-complete">Complete</button><button class="btn-delete">Delete</button></li>
+        <li class="list-item">Task 3 <button class="btn-complete">Complete</button><button class="btn-delete">Delete</button></li> -->
+      </ul>
+    <script src="script.js" type="module">
+      import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
+    </script>
+  </body>
+</html>

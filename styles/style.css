@@ -1,0 +1,70 @@
+html {
+  background-color: #f4f4f4;
+  color: #333;
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+.hidden {
+  display: none;
+}
+
+.btn-add {
+  background-color: #333;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px 0;
+  cursor: pointer;
+}
+.btn-edit {
+  background-color: #86560d;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px 5px;
+  cursor: pointer;
+}
+.btn-complete {
+  background-color: #0d8631;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px 5px;
+  cursor: pointer;
+}
+
+.btn-delete {
+  background-color: #aa1313;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.input {
+  padding: 10px;
+  margin: 10px 0;
+  width: 400px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+}
+
+.list-item {
+  background: #f4f4f4;
+  padding: 10px;
+  margin: 10px 0;
+  border-bottom: 1px #ccc dotted;
+}
+
+.completed {
+  text-decoration: line-through;
+  color: #555;
+}
