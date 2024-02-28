@@ -71,3 +71,26 @@ html {
 .new {
   color: #555;
 }
+.comment {
+  color: #7e7e7e;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.btn-clear {
+  background-color: #2987b3;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+.btn-filter {
+  background-color: #f1ef3f;
+  color: #000000;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px 0;
+  cursor: pointer;
+}

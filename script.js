@@ -1,8 +1,4 @@
 'use strict';
-
-// todo:
-// add datasets checks instead of class checks
-
 /* Task structure:
 {
   id: number,
@@ -15,43 +11,50 @@ const body = document.querySelector('body');
 const generatePage = () => {
   body.innerHTML = `
   <h1>TODO List</h1>
-  <div class="container">
-    <div class="modal-edit hidden">
-      <input type="text" class="input-edit">
-      <button class="btn-save">Save</button>
-  </div>
+  <p class="comment">TIPS:</p>
+  <p class="comment">to edit task double click to it's title</p>
+  <p class="comment">to finish task edition click 'Enter' key</p>
+  <p class="comment">task title saves only after finishing edition</p>
   <input type="text" class="input" placeholder="Write new task here...">
-  <button class="btn-add">Add</button>
+  <button class="btn-add">Add</button> <br>
+  <button class="btn-clear">Clear completed</button>
   <ul class="list hidden"></ul>
+  <div class="filter">
+    <button class="btn-filter" data-filter="all">all</button>
+    <button class="btn-filter" data-filter="active">active</button>
+    <button class="btn-filter" data-filter="completed">completed</button>
+  </div>
+
   `;
 };
 generatePage();
 
 const addTaskButton = document.querySelector('.btn-add');
+const clearCompletedTaskButton = document.querySelector('.btn-clear');
 const inputTaskTitle = document.querySelector('.input');
 const taskListElement = document.querySelector('.list');
-const editTaskModal = document.querySelector('.modal-edit');
 const inputs = document.querySelectorAll('.task-input');
+const filterButtons = document.querySelector('.filter');
 
 const renderTasks = () => {
-  const tasksData = getTasks('tasks');
-  if (!tasksData) return;
+  const tasksData = getFromLocalStorage('tasks');
+  if (tasksData.length > 0) tasksData.forEach((task) => renderNewTask(task));
   taskListElement.classList.remove('hidden');
-  tasksData.forEach((task) => renderNewTask(task));
 };
 
 const renderNewTask = (task) => {
   taskListElement.classList.remove('hidden');
-  const taskTitleElement = document.createElement('input');
-  taskTitleElement.value = task.title;
+  const taskTitleElement = document.createElement('label');
+  taskTitleElement.textContent = task.title;
   taskTitleElement.classList.add('input-task');
   taskTitleElement.classList.add(task.completed ? 'completed' : 'new');
+  taskTitleElement.dataset.title = task.title;
   const taskElement = document.createElement('li');
   taskElement.classList.add('list-item');
   taskElement.dataset.id = task.id;
   taskElement.innerHTML += `
-  <button class="btn-complete">Complete</button>
-  <button class="btn-delete">Delete</button>
+  <button class="btn-complete" data-action="complete">Complete</button>
+  <button class="btn-delete" data-action="delete">Delete</button>
   `;
   taskElement.appendChild(taskTitleElement);
   taskListElement.appendChild(taskElement);
@@ -72,7 +75,7 @@ const removeFromLocalStorage = (key, id) => {
 };
 
 const updateLocalStorage = (key, id, newTask) => {
-  let tasks = getTasks(key);
+  let tasks = getFromLocalStorage(key);
   tasks = tasks.map((task) => {
     if (task.id === id) {
       return { ...task, ...newTask };
@@ -82,7 +85,7 @@ const updateLocalStorage = (key, id, newTask) => {
   localStorage.setItem(key, JSON.stringify(tasks));
 };
 
-const getTasks = (key) => {
+const getFromLocalStorage = (key) => {
   const tasksData = localStorage.getItem(key);
   return tasksData ? JSON.parse(tasksData) : [];
 };
@@ -101,8 +104,17 @@ addTaskButton.addEventListener('click', () => {
   renderNewTask(newTask);
 });
 
+clearCompletedTaskButton.addEventListener('click', () => {
+  const tasks = getFromLocalStorage('tasks');
+  tasks.forEach((task) => {
+    if (task.completed) {
+      removeFromLocalStorage('tasks', task.id);
+      document.querySelector(`[data-id="${task.id}"]`).remove();
+    }
+  });
+});
+
 taskListElement.addEventListener('click', (event) => {
-  event.target.blur();
   const target = event.target;
   const taskElement = target.closest('.list-item');
   const taskInput = taskElement.querySelector('.input-task');
@@ -110,28 +122,60 @@ taskListElement.addEventListener('click', (event) => {
     return;
   }
   const taskId = +taskElement.dataset.id;
-  const task = getTasks('tasks').find((task) => task.id === taskId);
-  if (target.classList.contains('btn-complete')) {
+  const task = getFromLocalStorage('tasks').find((task) => task.id === taskId);
+  if (target.dataset.action === 'complete') {
     updateLocalStorage('tasks', taskId, { completed: !task.completed });
     taskInput.classList.toggle('completed');
-  } else if (target.classList.contains('btn-delete')) {
+  } else if (target.dataset.action === 'delete') {
     removeFromLocalStorage('tasks', taskId);
     taskElement.remove();
   }
 });
 
 taskListElement.addEventListener('dblclick', (event) => {
-  event.target.focus();
+  const target = event.target;
+  if (!target.dataset.title) return;
+  if (target.tagName === 'INPUT') return;
+  const editInput = document.createElement('input');
+  editInput.value = target.textContent;
+  editInput.dataset.title = target.dataset.title;
+  editInput.classList = target.classList;
+  target.replaceWith(editInput);
+  editInput.focus();
 });
 
-taskListElement.addEventListener('keyup', (event) => {
+taskListElement.addEventListener('keydown', (event) => {
   const target = event.target;
-  console.log(target.value);
-  if (!target.classList.contains('input-task')) return;
+  if (!target.dataset.title) return;
   if (event.key === 'Enter') {
     const taskId = +target.closest('.list-item').dataset.id;
     updateLocalStorage('tasks', taskId, { title: target.value });
-    event.target.blur();
+    const labelOutput = document.createElement('label');
+    labelOutput.textContent = target.value;
+    labelOutput.classList = target.classList;
+    labelOutput.dataset.title = target.dataset.title;
+    target.replaceWith(labelOutput);
+  }
+});
+
+filterButtons.addEventListener('click', (event) => {
+  const target = event.target;
+  if (!target.dataset.filter) return;
+  if (target.dataset.filter === 'all') {
+    taskListElement.innerHTML = '';
+    renderTasks();
+  } else if (target.dataset.filter === 'active') {
+    const tasks = getFromLocalStorage('tasks');
+    taskListElement.innerHTML = '';
+    tasks.forEach((task) => {
+      if (!task.completed) renderNewTask(task);
+    });
+  } else if (target.dataset.filter === 'completed') {
+    const tasks = getFromLocalStorage('tasks');
+    taskListElement.innerHTML = '';
+    tasks.forEach((task) => {
+      if (task.completed) renderNewTask(task);
+    });
   }
 });
 
