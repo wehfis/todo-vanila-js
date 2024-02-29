@@ -94,3 +94,8 @@ html {
   margin: 10px 0;
   cursor: pointer;
 }
+
+.active {
+  background-color: #97951e;
+  color: #000000;
+}
