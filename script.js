@@ -29,28 +29,33 @@ const inputTaskTitle = document.querySelector('.input');
 const taskListElement = document.querySelector('.list');
 const inputs = document.querySelectorAll('.task-input');
 const filterButtons = document.querySelector('.filter');
-let currentActiveInput;
+const defaultFilterOption = document.querySelector('.btn-filter[data-filter="all"]');
+let previousActiveFilter = defaultFilterOption;
 
 const renderTasks = () => {
   taskListElement.innerHTML = '';
   const tasksData = getFromLocalStorage('tasks');
   if (tasksData.length > 0) {
     turnFilters(true);
+    clearFilters();
     tasksData.forEach((task) => renderNewTask(task));
   }
 };
+
 const renderFilteredTasks = (filterOption) => {
   const tasksData = getFromLocalStorage('tasks');
   if (tasksData.length < 1) {
-    return
+    return;
   }
-  
+
   taskListElement.innerHTML = '';
   if (filterOption === 'all') {
     tasksData.forEach((task) => renderNewTask(task));
   } else if (filterOption === 'active') {
     tasksData.forEach((task) => {
-      if (!task.completed) renderNewTask(task);
+      if (!task.completed) {
+        renderNewTask(task);
+      }
     });
   } else if (filterOption === 'completed') {
     tasksData.forEach((task) => {
@@ -69,7 +74,7 @@ const turnFilters = (enable) => {
     filterButtons.classList.add('hidden');
     clearCompletedTaskButton.classList.add('hidden');
   }
-}
+};
 
 const renderNewTask = (task) => {
   const taskTitleElement = document.createElement('label');
@@ -77,7 +82,7 @@ const renderNewTask = (task) => {
   taskTitleElement.classList.add('input-task');
   taskTitleElement.classList.add(task.completed ? 'completed' : 'new');
   taskTitleElement.dataset.title = task.title;
-  
+
   const taskElement = document.createElement('li');
   taskElement.classList.add('list-item');
   taskElement.dataset.id = task.id;
@@ -85,7 +90,7 @@ const renderNewTask = (task) => {
   <button class="btn-complete" data-action="complete">Complete</button>
   <button class="btn-delete" data-action="delete">Delete</button>
   `;
-  
+
   taskElement.appendChild(taskTitleElement);
   taskListElement.appendChild(taskElement);
 };
@@ -98,9 +103,10 @@ const appendToLocalStorage = (key, newData) => {
 
 const removeFromLocalStorage = (key, id) => {
   const data = getFromLocalStorage(key);
-  localStorage.setItem(key, JSON.stringify(
-    data.filter((item) => item.id !== id)
-  ));
+  localStorage.setItem(
+    key,
+    JSON.stringify(data.filter((item) => item.id !== id))
+  );
 };
 
 const updateLocalStorage = (key, id, newTask) => {
@@ -119,18 +125,37 @@ const getFromLocalStorage = (key) => {
   return tasksData ? JSON.parse(tasksData) : [];
 };
 
-const clearFilter = () => {
-  filterButtons.querySelectorAll('.btn-filter').forEach((button) => {
-    button.classList.remove('active');
-  });
-};
+const clearFilters = () => {
+  if (previousActiveFilter) {
+    previousActiveFilter.classList.remove('active');
+    defaultFilterOption.classList.add('active');
+    previousActiveFilter = defaultFilterOption;
+  }
+}
+
+const saveOnBlur = (taskId, event) => {
+  const target = event.target;
+  const task = target.closest('.list-item');
+  console.log(task);
+  if (target.value.trim() === '' || !target.value) {
+    removeFromLocalStorage('tasks', taskId);
+    task.remove();
+  }
+  const labelOutput = document.createElement('label');
+  labelOutput.textContent = target.value;
+  labelOutput.classList = target.classList;
+  labelOutput.dataset.title = target.dataset.title;
+  target.replaceWith(labelOutput);
+
+  updateLocalStorage('tasks', taskId, { title: target.value });
+}
 
 addTaskButton.addEventListener('click', () => {
   const title = inputTaskTitle.value;
   if (!title || title.trim() === '') {
     return;
-  }  
-  clearFilter();
+  }
+  clearFilters();
   const newTask = {
     id: new Date().getTime(),
     title: title,
@@ -140,7 +165,9 @@ addTaskButton.addEventListener('click', () => {
   renderTasks();
 
   inputTaskTitle.value = '';
-  turnFilters(true);
+  if (getFromLocalStorage('tasks').length > 0) {
+    turnFilters(true);
+  }
 });
 
 clearCompletedTaskButton.addEventListener('click', () => {
@@ -148,13 +175,9 @@ clearCompletedTaskButton.addEventListener('click', () => {
   tasks.forEach((task) => {
     if (task.completed) {
       removeFromLocalStorage('tasks', task.id);
-      document.querySelector(`[data-id="${task.id}"]`).remove();
     }
   });
-  if (getFromLocalStorage('tasks') < 1) {
-    turnFilters(false);
-    return;
-  }
+  renderTasks();
 });
 
 taskListElement.addEventListener('click', (event) => {
@@ -164,13 +187,13 @@ taskListElement.addEventListener('click', (event) => {
   if (!taskElement) {
     return;
   }
-  clearFilter();
   const taskId = +taskElement.dataset.id;
-  
-  if (target.dataset.action === 'complete') {
-    const task = getFromLocalStorage('tasks').find((task) => task.id === taskId);
-    updateLocalStorage('tasks', taskId, { completed: !task.completed });
 
+  if (target.dataset.action === 'complete') {
+    const task = getFromLocalStorage('tasks').find(
+      (task) => task.id === taskId
+    );
+    updateLocalStorage('tasks', taskId, { completed: !task.completed });
     const taskInput = taskElement.querySelector('.input-task');
     taskInput.classList.toggle('completed');
   } else if (target.dataset.action === 'delete') {
@@ -189,30 +212,16 @@ taskListElement.addEventListener('dblclick', (event) => {
     return;
   }
   const taskId = +target.closest('.list-item').dataset.id;
-  const task = target.closest('.list-item');
   const editInput = document.createElement('input');
 
   editInput.value = target.textContent;
   editInput.dataset.title = target.dataset.title;
   editInput.classList = target.classList;
-  
+
   target.replaceWith(editInput);
   editInput.focus();
 
-  editInput.addEventListener('blur', (event) => {
-    const target = event.target;
-    if (target.value.trim() === '' || !target.value) {
-      removeFromLocalStorage('tasks', taskId);
-      task.remove();
-    } 
-    const labelOutput = document.createElement('label');
-    labelOutput.textContent = target.value;
-    labelOutput.classList = target.classList;
-    labelOutput.dataset.title = target.dataset.title;
-    target.replaceWith(labelOutput);
-    
-    updateLocalStorage('tasks', taskId, { title: target.value });
-  });
+  editInput.addEventListener('blur', saveOnBlur.bind(null, taskId), { once: true });
 });
 
 taskListElement.addEventListener('keydown', (event) => {
@@ -225,15 +234,15 @@ taskListElement.addEventListener('keydown', (event) => {
     if (target.value.trim() === '' || !target.value) {
       removeFromLocalStorage('tasks', taskId);
       target.closest('.list-item').remove();
-    } 
+    }
     updateLocalStorage('tasks', taskId, { title: target.value });
-    
+
     const labelOutput = document.createElement('label');
-    
+
     labelOutput.textContent = target.value;
     labelOutput.classList = target.classList;
     labelOutput.dataset.title = target.dataset.title;
-    
+
     target.replaceWith(labelOutput);
   }
 });
@@ -243,9 +252,12 @@ filterButtons.addEventListener('click', (event) => {
   if (!target.dataset.filter) {
     return;
   }
+  if (previousActiveFilter) {
+    previousActiveFilter.classList.remove('active');
+  }
+  previousActiveFilter = target;
   const isInitiallyActive = target.classList.contains('active');
-  clearFilter();
-  
+
   if (isInitiallyActive) {
     renderFilteredTasks('all');
     target.classList.remove('active');
