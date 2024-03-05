@@ -1,7 +1,7 @@
 # todo-vanila-js
 
-As API is used "json-server", the structure of db is:
-"
+### As API is used "json-server" npm package, the structure of tasks is:
+```
 {
   "tasks": [
     {
@@ -16,19 +16,26 @@ As API is used "json-server", the structure of db is:
     }
   ]
 }
-"
-To setup an local API:
+```
+## To setup an local API:
 
-1. Init npm project:
+### 1. Init npm project:
 
-npm init -y
+```
+  npm init -y
+```
 
-2. Download "json-server" package:
+### 2. Download "json-server" package:
 
-npm install json-server
+```
+  npm install json-server
+```
 
-3. Create file for storing data "db.json", and paste a tasks structure.
+### 3. Create file for storing data "db.json", and paste a tasks structure.
 
-4. Run your local API:
+### 4. Run your local API:
 
-npx json-server db.json
+```
+  npx json-server db.json
+```
+Assuming that in **step 3** you've created "db.json" file.
