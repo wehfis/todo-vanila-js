@@ -1,5 +1,7 @@
 'use strict';
 
+import { EventEmitter } from './EventEmitter';
+
 const serverAPI = 'http://localhost:3000';
 const body = document.querySelector('body');
 
@@ -80,7 +82,9 @@ class TaskList {
       console.error(`ERROR UPDATING TASK: ${error}`);
     }
   }
-  static async renderTasks() {}
+  static async getTaskById(taskId) {
+    return await TaskList.getTasks().find((task) => task.id === taskId);
+  }
 }
 
 class ToDoForm {
@@ -108,16 +112,32 @@ class TaskFilter {
     const tasks = TaskList.getTasks();
     tasks = tasks.filter((task) => !task.completed);
     tasks.forEach((task) => TaskList.removeTask(task.id));
+    ToDoApp.renderTasks();
   }
   static async filterTasks(filterOption) {
+    ToDoApp.taskListElement.innerHTML = '';
     const tasks = TaskList.getTasks();
+    if (tasks.length < 1) {
+      return;
+    }
     switch (filterOption) {
       case FilterOption.Active:
-        return tasks.filter((task) => !task.completed);
+        tasks.forEach((task) => {
+          if (!task.completed) {
+            ToDoApp.renderNewTask(task);
+          }
+        });
+        return;
       case FilterOption.Completed:
-        return tasks.filter((task) => task.completed);
+        tasks.forEach((task) => {
+          if (task.completed) {
+            ToDoApp.renderNewTask(task);
+          }
+        });
+        return;
       default:
-        return tasks;
+        tasks.forEach((task) => ToDoApp.renderNewTask(task));
+        return;
     }
   }
 }
@@ -172,12 +192,19 @@ class ToDoApp {
       ToDoApp.clearCompletedTaskButton.classList.add('hidden');
     }
   }
+  static clearFilters() {
+    if (ToDoApp.previousActiveFilter) {
+      ToDoApp.previousActiveFilter.classList.remove('active');
+      ToDoApp.defaultFilterOption.classList.add('active');
+      ToDoApp.previousActiveFilter = ToDoApp.defaultFilterOption;
+    }
+  }
   static async renderTasks() {
     ToDoApp.taskListElement.innerHTML = '';
     const tasksData = await TaskList.getTasks();
     if (tasksData.length > 0) {
       ToDoApp.turnFilters(true);
-      // clearFilters();
+      clearFilters();
       tasksData.forEach((task) => ToDoApp.renderNewTask(task));
     }
   }
@@ -198,6 +225,24 @@ class ToDoApp {
     taskElement.appendChild(taskTitleElement);
     ToDoApp.taskListElement.appendChild(taskElement);
   }
+  static saveOnBlur(taskId, event) {
+    const target = event.target;
+    const task = target.closest('.list-item');
+    console.log(task);
+    if (target.value.trim() === '' || !target.value) {
+      TaskList.removeTask(taskId);
+      task.remove();
+    }
+    const labelOutput = document.createElement('label');
+    labelOutput.textContent = target.value;
+    labelOutput.classList = target.classList;
+    labelOutput.dataset.title = target.dataset.title;
+    target.replaceWith(labelOutput);
+    TaskList.updateTask(taskId, { ...TaskList.getTaskById(taskId), title: target.value });
+  }
 }
 
 ToDoApp.init(body);
+const emitter = new EventEmitter(); 
+
+// TODO - add event listeners
