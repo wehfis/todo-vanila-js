@@ -82,6 +82,7 @@ class TaskListDOM {
   static hiddenClass = 'hidden';
   static completeButtonClass = 'btn-complete';
   static deleteButtonClass = 'btn-delete';
+  
   static async renderHTML() {
     TaskListDOM.body.innerHTML = `
       <h1>TODO List</h1>
@@ -100,9 +101,20 @@ class TaskListDOM {
       </div>
     `;
   }
+  static addEventListeners() {
+    ToDoFormHandler.addTaskButton.addEventListener('click', ToDoFormHandler.handleAddTask);
+    TaskFilterHandler.clearCompletedTaskButton.addEventListener('click', TaskFilterHandler.clearCompleted);
+    TaskListHandler.taskListElement.addEventListener('click', TaskListHandler.handleCompleteDelete);
+    TaskListHandler.taskListElement.addEventListener('dblclick', TaskListHandler.handleEditTask);
+    TaskListHandler.taskListElement.addEventListener('keydown', TaskListHandler.handleSaveEdittedTask);
+    TaskFilterHandler.filterButtons.addEventListener('click', TaskFilterHandler.handleFilterButtons);
+  }
 }
 
 class TaskListHandler {
+  static taskListElement;
+  static taskListElementSelector = '.list';
+
   static async handleCompleteDelete(event) {
     const target = event.target;
 
@@ -120,7 +132,7 @@ class TaskListHandler {
     } else if (target.dataset.action === 'delete') {
       TaskAPI.removeTask(taskId);
       taskElement.remove();
-      ToDoApp.turnFilters(tasks.length - 1 > 0);
+      TaskFilterHandler.turnFilters(tasks.length - 1 > 0);
     }
   }
   static async handleEditTask(event) {
@@ -150,7 +162,7 @@ class TaskListHandler {
       if (target.value.trim() === '' || !target.value) {
         await TaskAPI.removeTask(taskId);
         target.closest(TaskListDOM.listItem).remove();
-        ToDoApp.turnFilters(tasks.length - 1 > 0);
+        TaskFilterHandler.turnFilters(tasks.length - 1 > 0);
         return;
       }
       await TaskAPI.updateTask(taskId, {
@@ -168,7 +180,7 @@ class TaskListHandler {
     if (target.value.trim() === '' || !target.value) {
       await TaskAPI.removeTask(taskId);
       task.remove();
-      ToDoApp.turnFilters(tasks.length - 1 > 0);
+      TaskFilterHandler.turnFilters(tasks.length - 1 > 0);
       return
     }
     TaskListHandler.replaceElement('label', target);
@@ -192,129 +204,14 @@ class TaskListHandler {
     target.replaceWith(newElement);
     return newElement;
   }
-}
-
-class ToDoFormHandler {
-
-  static async handleAddTask() {
-    const title = ToDoApp.inputTaskTitle.value;
-    if (!title || title.trim() === '') {
-      return;
-    }
-    ToDoApp.clearFilters();
-    const newTask = new Task(title);
-    TaskAPI.addTask(newTask);
-    ToDoApp.renderTasks();
-
-    ToDoApp.inputTaskTitle.value = '';
-    const currentTasks = await TaskAPI.getTasks();
-    if (currentTasks.length > 0) {
-      ToDoApp.turnFilters(true);
-    }
-  }
-}
-
-class TaskFilterHandler {
-  static async clearCompleted() {
-    const tasks = await TaskAPI.getTasks();
-    tasks
-      .filter((task) => task.completed)
-      .forEach((task) => TaskAPI.removeTask(task.id));
-    ToDoApp.renderTasks();
-  }
-  static async filterTasks(filterOption) {
-    ToDoApp.taskListElement.innerHTML = '';
-    const tasks = await TaskAPI.getTasks();
-    if (tasks.length < 1) {
-      return;
-    }
-    switch (filterOption) {
-      case FilterOption.Active:
-        tasks.forEach((task) => {
-          if (!task.completed) {
-            ToDoApp.renderNewTask(task);
-          }
-        });
-        return;
-      case FilterOption.Completed:
-        tasks.forEach((task) => {
-          if (task.completed) {
-            ToDoApp.renderNewTask(task);
-          }
-        });
-        return;
-      default:
-        tasks.forEach((task) => ToDoApp.renderNewTask(task));
-        return;
-    }
-  }
-  static async handleFilterButtons(event) {
-    const target = event.target;
-    if (!target.dataset.filter) {
-      return;
-    }
-    if (ToDoApp.previousActiveFilter) {
-      ToDoApp.previousActiveFilter.classList.remove(FilterOption.Active);
-    }
-    ToDoApp.previousActiveFilter = target;
-    const isInitiallyActive = target.classList.contains(FilterOption.Active);
-
-    if (isInitiallyActive) {
-      TaskFilterHandler.filterTasks(FilterOption.All);
-      target.classList.remove(FilterOption.Active);
-    } else {
-      TaskFilterHandler.filterTasks(target.dataset.filter);
-      target.classList.add(FilterOption.Active);
-    }
-  }
-}
-
-class ToDoApp {
-  static addTaskButton = '.btn-add';
-  static clearCompletedTaskButton = '.btn-clear';
-  static inputTaskTitle = '.input';
-  static taskListElement = '.list';
-  static inputs = '.task-input';
-  static filterButtons = '.filter';
-  static defaultFilterOption = '.btn-filter[data-filter="all"]';
-  static previousActiveFilter = null;
-  static async start() {
-    ToDoApp.initElements();
-    await ToDoApp.renderTasks();
-  }
-  static async initElements() {
-    ToDoApp.addTaskButton = document.querySelector(ToDoApp.addTaskButton);
-    ToDoApp.clearCompletedTaskButton = document.querySelector(ToDoApp.clearCompletedTaskButton);
-    ToDoApp.inputTaskTitle = document.querySelector(ToDoApp.inputTaskTitle);
-    ToDoApp.taskListElement = document.querySelector(ToDoApp.taskListElement);
-    ToDoApp.inputs = document.querySelectorAll(ToDoApp.inputs);
-    ToDoApp.filterButtons = document.querySelector(ToDoApp.filterButtons);
-    ToDoApp.defaultFilterOption = document.querySelector(ToDoApp.defaultFilterOption);
-  }
-  static turnFilters(turnOn) {
-    if (turnOn) {
-      ToDoApp.filterButtons.classList.remove(TaskListDOM.hiddenClass);
-      ToDoApp.clearCompletedTaskButton.classList.remove(TaskListDOM.hiddenClass);
-    } else {
-      ToDoApp.filterButtons.classList.add(TaskListDOM.hiddenClass);
-      ToDoApp.clearCompletedTaskButton.classList.add(TaskListDOM.hiddenClass);
-    }
-  }
-  static clearFilters() {
-    if (ToDoApp.previousActiveFilter) {
-      ToDoApp.previousActiveFilter.classList.remove(FilterOption.Active);
-      ToDoApp.defaultFilterOption.classList.add(FilterOption.Active);
-      ToDoApp.previousActiveFilter = ToDoApp.defaultFilterOption;
-    }
-  }
   static async renderTasks() {
-    ToDoApp.taskListElement.innerHTML = '';
+    TaskListHandler.taskListElement.innerHTML = '';
     const tasksData = await TaskAPI.getTasks();
-    ToDoApp.turnFilters(false);
+    TaskFilterHandler.turnFilters(false);
     if (tasksData.length > 0) {
-      ToDoApp.turnFilters(true);
-      ToDoApp.clearFilters();
-      tasksData.forEach((task) => ToDoApp.renderNewTask(task));
+      TaskFilterHandler.turnFilters(true);
+      TaskFilterHandler.clearFilters();
+      tasksData.forEach((task) => TaskListHandler.renderNewTask(task));
     }
   }
   static renderNewTask(task) {
@@ -332,16 +229,128 @@ class ToDoApp {
     <button class="${TaskListDOM.deleteButtonClass}" data-action="delete">Delete</button>
     `;
     taskElement.appendChild(taskTitleElement);
-    ToDoApp.taskListElement.appendChild(taskElement);
+    TaskListHandler.taskListElement.appendChild(taskElement);
+  }
+}
+
+class ToDoFormHandler {
+  static addTaskButton;
+  static addTaskButtonSelector = '.btn-add';
+  static inputTaskTitle;
+  static inputTaskTitleSelector = '.input';
+  
+  static async handleAddTask() {
+    const title = ToDoFormHandler.inputTaskTitle.value;
+    if (!title || title.trim() === '') {
+      return;
+    }
+    TaskFilterHandler.clearFilters();
+    const newTask = new Task(title);
+    TaskAPI.addTask(newTask);
+    TaskListHandler.renderTasks();
+
+    ToDoFormHandler.inputTaskTitle.value = '';
+    const currentTasks = await TaskAPI.getTasks();
+    if (currentTasks.length > 0) {
+      TaskFilterHandler.turnFilters(true);
+    }
+  }
+}
+
+class TaskFilterHandler {
+  static clearCompletedTaskButton;
+  static clearCompletedTaskButtonSelector = '.btn-clear';
+  static filterButtons;
+  static filterButtonsSelelector = '.filter';
+  static defaultFilterOption;
+  static defaultFilterOptionSelector = '.btn-filter[data-filter="all"]';
+  static previousActiveFilter;
+
+  static async clearCompleted() {
+    const tasks = await TaskAPI.getTasks();
+    tasks
+      .filter((task) => task.completed)
+      .forEach((task) => TaskAPI.removeTask(task.id));
+    TaskListHandler.renderTasks();
+  }
+  static async filterTasks(filterOption) {
+    TaskListHandler.taskListElement.innerHTML = '';
+    const tasks = await TaskAPI.getTasks();
+    if (tasks.length < 1) {
+      return;
+    }
+    switch (filterOption) {
+      case FilterOption.Active:
+        tasks.forEach((task) => {
+          if (!task.completed) {
+            TaskListHandler.renderNewTask(task);
+          }
+        });
+        return;
+      case FilterOption.Completed:
+        tasks.forEach((task) => {
+          if (task.completed) {
+            TaskListHandler.renderNewTask(task);
+          }
+        });
+        return;
+      default:
+        tasks.forEach((task) => TaskListHandler.renderNewTask(task));
+        return;
+    }
+  }
+  static async handleFilterButtons(event) {
+    const target = event.target;
+    if (!target.dataset.filter) {
+      return;
+    }
+    if (TaskFilterHandler.previousActiveFilter) {
+      TaskFilterHandler.previousActiveFilter.classList.remove(FilterOption.Active);
+    }
+    TaskFilterHandler.previousActiveFilter = target;
+    const isInitiallyActive = target.classList.contains(FilterOption.Active);
+
+    if (isInitiallyActive) {
+      TaskFilterHandler.filterTasks(FilterOption.All);
+      target.classList.remove(FilterOption.Active);
+    } else {
+      TaskFilterHandler.filterTasks(target.dataset.filter);
+      target.classList.add(FilterOption.Active);
+    }
+  }
+  static turnFilters(turnOn) {
+    if (turnOn) {
+      TaskFilterHandler.filterButtons.classList.remove(TaskListDOM.hiddenClass);
+      TaskFilterHandler.clearCompletedTaskButton.classList.remove(TaskListDOM.hiddenClass);
+    } else {
+      TaskFilterHandler.filterButtons.classList.add(TaskListDOM.hiddenClass);
+      TaskFilterHandler.clearCompletedTaskButton.classList.add(TaskListDOM.hiddenClass);
+    }
+  }
+  static clearFilters() {
+    if (TaskFilterHandler.previousActiveFilter) {
+      TaskFilterHandler.previousActiveFilter.classList.remove(FilterOption.Active);
+      TaskFilterHandler.defaultFilterOption.classList.add(FilterOption.Active);
+      TaskFilterHandler.previousActiveFilter = TaskFilterHandler.defaultFilterOption;
+    }
+  }
+}
+
+class ToDoApp {
+  static async start() {
+    ToDoApp.initElements();
+    await TaskListHandler.renderTasks();
+  }
+  static initElements() {
+    ToDoFormHandler.addTaskButton = document.querySelector(ToDoFormHandler.addTaskButtonSelector);
+    TaskFilterHandler.clearCompletedTaskButton = document.querySelector(TaskFilterHandler.clearCompletedTaskButtonSelector);
+    ToDoFormHandler.inputTaskTitle = document.querySelector(ToDoFormHandler.inputTaskTitleSelector);
+    TaskListHandler.taskListElement = document.querySelector(TaskListHandler.taskListElementSelector);
+    TaskFilterHandler.filterButtons = document.querySelector(TaskFilterHandler.filterButtonsSelelector);
+    TaskFilterHandler.defaultFilterOption = document.querySelector(TaskFilterHandler.defaultFilterOptionSelector);
   }
 }
 
 TaskListDOM.renderHTML();
 ToDoApp.start();
-
-ToDoApp.addTaskButton.addEventListener('click', ToDoFormHandler.handleAddTask);
-ToDoApp.clearCompletedTaskButton.addEventListener('click', TaskFilterHandler.clearCompleted);
-ToDoApp.taskListElement.addEventListener('click', TaskListHandler.handleCompleteDelete);
-ToDoApp.taskListElement.addEventListener('dblclick', TaskListHandler.handleEditTask);
-ToDoApp.taskListElement.addEventListener('keydown', TaskListHandler.handleSaveEdittedTask);
-ToDoApp.filterButtons.addEventListener('click', TaskFilterHandler.handleFilterButtons);
+TaskListDOM.addEventListeners();
