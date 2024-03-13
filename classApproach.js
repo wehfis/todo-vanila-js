@@ -5,7 +5,6 @@ const FilterOption = {
   Active: 'active',
   Completed: 'completed',
 };
-
 class Task {
   id;
   title;
@@ -16,7 +15,6 @@ class Task {
     this.completed = false;
   }
 }
-
 class TaskAPI {
   static serverAPI = 'http://localhost:3000';
   static async getTasks() {
@@ -70,55 +68,22 @@ class TaskAPI {
     }
   }
 }
-
 class TaskListDOM {
-  static body = document.querySelector('body');
-  static listItem = '.list-item';
-  static inputTask = '.input-task';
-  static listItemClass = 'list-item';
-  static inputTaskClass = 'input-task';
-  static completedClass = 'completed';
-  static incompletedClass = 'new';
-  static hiddenClass = 'hidden';
-  static completeButtonClass = 'btn-complete';
-  static deleteButtonClass = 'btn-delete';
+  static taskListElement;
+  static taskListElementClass = 'list';
   
-  static async renderHTML() {
-    TaskListDOM.body.innerHTML = `
-      <h1>TODO List</h1>
-      <p class="comment">TIPS:</p>
-      <p class="comment">to edit task double click to it's title</p>
-      <p class="comment">to finish task edition click 'Enter' key</p>
-      <p class="comment">task title saves only after finishing edition</p>
-      <input type="text" class="input" placeholder="Write new task here...">
-      <button class="btn-add">Add</button> <br>
-      <button class="btn-clear ${TaskListDOM.hiddenClass}">Clear completed</button>
-      <ul class="list"></ul>
-      <div class="filter ${TaskListDOM.hiddenClass}">
-        <button class="btn-filter" data-filter="all">all</button>
-        <button class="btn-filter" data-filter="active">active</button>
-        <button class="btn-filter" data-filter="completed">completed</button>
-      </div>
-    `;
-  }
-  static addEventListeners() {
-    ToDoFormHandler.addTaskButton.addEventListener('click', ToDoFormHandler.handleAddTask);
-    TaskFilterHandler.clearCompletedTaskButton.addEventListener('click', TaskFilterHandler.clearCompleted);
-    TaskListHandler.taskListElement.addEventListener('click', TaskListHandler.handleCompleteDelete);
-    TaskListHandler.taskListElement.addEventListener('dblclick', TaskListHandler.handleEditTask);
-    TaskListHandler.taskListElement.addEventListener('keydown', TaskListHandler.handleSaveEdittedTask);
-    TaskFilterHandler.filterButtons.addEventListener('click', TaskFilterHandler.handleFilterButtons);
+  static async renderHTML(body) {
+    TaskListDOM.taskListElement = document.createElement('ul');
+    TaskListDOM.taskListElement.classList.add(TaskListDOM.taskListElementClass);
+    body.appendChild(TaskListDOM.taskListElement);
   }
 }
-
 class TaskListHandler {
-  static taskListElement;
-  static taskListElementSelector = '.list';
 
   static async handleCompleteDelete(event) {
     const target = event.target;
 
-    const taskElement = target.closest(TaskListDOM.listItem);
+    const taskElement = target.closest(ToDoApp.listItem);
     if (!taskElement) {
       return;
     }
@@ -127,8 +92,8 @@ class TaskListHandler {
     if (target.dataset.action === 'complete') {
       const task = await TaskAPI.getTaskById(taskId);
       TaskAPI.updateTask(taskId, { ...task, completed: !task.completed });
-      const taskInput = taskElement.querySelector(TaskListDOM.inputTask);
-      taskInput.classList.toggle(TaskListDOM.completedClass);
+      const taskInput = taskElement.querySelector(ToDoApp.inputTask);
+      taskInput.classList.toggle(ToDoApp.completedClass);
     } else if (target.dataset.action === 'delete') {
       TaskAPI.removeTask(taskId);
       taskElement.remove();
@@ -143,7 +108,7 @@ class TaskListHandler {
     if (target.tagName === 'INPUT') {
       return;
     }
-    const taskId = +target.closest(TaskListDOM.listItem).dataset.id;
+    const taskId = +target.closest(ToDoApp.listItem).dataset.id;
 
     const editInput = await TaskListHandler.replaceElement('input', target);
     editInput.focus();
@@ -156,12 +121,12 @@ class TaskListHandler {
     const target = event.target;
     if (!target.dataset.title) return;
 
-    const taskId = +target.closest(TaskListDOM.listItem).dataset.id;
+    const taskId = +target.closest(ToDoApp.listItem).dataset.id;
     const tasks = await TaskAPI.getTasks();
     if (event.key === 'Enter') {
       if (target.value.trim() === '' || !target.value) {
         await TaskAPI.removeTask(taskId);
-        target.closest(TaskListDOM.listItem).remove();
+        target.closest(ToDoApp.listItem).remove();
         TaskFilterHandler.turnFilters(tasks.length - 1 > 0);
         return;
       }
@@ -175,7 +140,7 @@ class TaskListHandler {
   }
   static async saveOnBlur(taskId, event) {
     const target = event.target;
-    const task = target.closest(TaskListDOM.listItem);
+    const task = target.closest(ToDoApp.listItem);
     const tasks = await TaskAPI.getTasks();
     if (target.value.trim() === '' || !target.value) {
       await TaskAPI.removeTask(taskId);
@@ -204,77 +169,97 @@ class TaskListHandler {
     target.replaceWith(newElement);
     return newElement;
   }
-  static async renderTasks() {
-    TaskListHandler.taskListElement.innerHTML = '';
-    const tasksData = await TaskAPI.getTasks();
-    TaskFilterHandler.turnFilters(false);
-    if (tasksData.length > 0) {
-      TaskFilterHandler.turnFilters(true);
-      TaskFilterHandler.clearFilters();
-      tasksData.forEach((task) => TaskListHandler.renderNewTask(task));
-    }
-  }
-  static renderNewTask(task) {
-    const taskTitleElement = document.createElement('label');
-    taskTitleElement.textContent = task.title;
-    taskTitleElement.classList.add(TaskListDOM.inputTaskClass);
-    taskTitleElement.classList.add(task.completed ? `${TaskListDOM.completedClass}` : `${TaskListDOM.incompletedClass}`);
-    taskTitleElement.dataset.title = task.title;
+}
+class ToDoFormDOM {
+  static addTaskButton;
+  static addTaskButtonClass = 'btn-add';
+  static inputTaskTitle;
+  static inputTaskTitleClass = 'input';
 
-    const taskElement = document.createElement('li');
-    taskElement.classList.add(TaskListDOM.listItemClass);
-    taskElement.dataset.id = task.id;
-    taskElement.innerHTML += `
-    <button class="${TaskListDOM.completeButtonClass}" data-action="complete">Complete</button>
-    <button class="${TaskListDOM.deleteButtonClass}" data-action="delete">Delete</button>
-    `;
-    taskElement.appendChild(taskTitleElement);
-    TaskListHandler.taskListElement.appendChild(taskElement);
+  static async renderHTML(body) {
+    ToDoFormDOM.inputTaskTitle = document.createElement('input');
+    ToDoFormDOM.inputTaskTitle.classList.add(ToDoFormDOM.inputTaskTitleClass);
+    ToDoFormDOM.inputTaskTitle.placeholder = 'Write new task here...';
+
+    ToDoFormDOM.addTaskButton = document.createElement('button');
+    ToDoFormDOM.addTaskButton.classList.add(ToDoFormDOM.addTaskButtonClass);
+    ToDoFormDOM.addTaskButton.textContent = 'Add';
+
+    body.appendChild(ToDoFormDOM.inputTaskTitle);
+    body.appendChild(ToDoFormDOM.addTaskButton);
   }
 }
-
 class ToDoFormHandler {
-  static addTaskButton;
-  static addTaskButtonSelector = '.btn-add';
-  static inputTaskTitle;
-  static inputTaskTitleSelector = '.input';
   
   static async handleAddTask() {
-    const title = ToDoFormHandler.inputTaskTitle.value;
+    const title = ToDoFormDOM.inputTaskTitle.value;
     if (!title || title.trim() === '') {
       return;
     }
     TaskFilterHandler.clearFilters();
     const newTask = new Task(title);
     TaskAPI.addTask(newTask);
-    TaskListHandler.renderTasks();
+    TaskRender.renderTasks();
 
-    ToDoFormHandler.inputTaskTitle.value = '';
+    ToDoFormDOM.inputTaskTitle.value = '';
     const currentTasks = await TaskAPI.getTasks();
     if (currentTasks.length > 0) {
       TaskFilterHandler.turnFilters(true);
     }
   }
 }
-
-class TaskFilterHandler {
+class TaskFilterDOM {
   static clearCompletedTaskButton;
-  static clearCompletedTaskButtonSelector = '.btn-clear';
+  static clearCompletedTaskButtonClass = 'btn-clear';
   static filterButtons;
-  static filterButtonsSelelector = '.filter';
+  static filterButtonsClass = 'filter';
   static defaultFilterOption;
-  static defaultFilterOptionSelector = '.btn-filter[data-filter="all"]';
-  static previousActiveFilter;
+  static defaultFilterOptionClass = 'btn-filter';
+  static defaultFilterOptionDataset = 'data-filter="all"';
+  static previousActiveFilter = null;
+
+  static renderHTML(body) {
+    TaskFilterDOM.clearCompletedTaskButton = document.createElement('button');
+    TaskFilterDOM.clearCompletedTaskButton.classList.add(TaskFilterDOM.clearCompletedTaskButtonClass);
+    TaskFilterDOM.clearCompletedTaskButton.textContent = 'Clear completed';
+
+    TaskFilterDOM.filterButtons = document.createElement('div');
+    TaskFilterDOM.filterButtons.classList.add(TaskFilterDOM.filterButtonsClass);
+    TaskFilterDOM.filterButtons.classList.add(ToDoApp.hiddenClass);
+
+    TaskFilterDOM.defaultFilterOption = document.createElement('button');
+    TaskFilterDOM.defaultFilterOption.classList.add(TaskFilterDOM.defaultFilterOptionClass);
+    TaskFilterDOM.defaultFilterOption.dataset.filter = FilterOption.All;
+    TaskFilterDOM.defaultFilterOption.textContent = FilterOption.All;
+
+    const ActiveFilter = document.createElement('button');
+    ActiveFilter.classList.add(TaskFilterDOM.defaultFilterOptionClass);
+    ActiveFilter.dataset.filter = FilterOption.Active;
+    ActiveFilter.textContent = FilterOption.Active;
+
+    const CompletedFilter = document.createElement('button');
+    CompletedFilter.classList.add(TaskFilterDOM.defaultFilterOptionClass);
+    CompletedFilter.dataset.filter = FilterOption.Completed;
+    CompletedFilter.textContent = FilterOption.Completed;
+
+    body.appendChild(TaskFilterDOM.clearCompletedTaskButton);
+    body.appendChild(TaskFilterDOM.filterButtons);
+    TaskFilterDOM.filterButtons.appendChild(TaskFilterDOM.defaultFilterOption);
+    TaskFilterDOM.filterButtons.appendChild(ActiveFilter);
+    TaskFilterDOM.filterButtons.appendChild(CompletedFilter);
+  }
+}
+class TaskFilterHandler {
 
   static async clearCompleted() {
     const tasks = await TaskAPI.getTasks();
     tasks
       .filter((task) => task.completed)
       .forEach((task) => TaskAPI.removeTask(task.id));
-    TaskListHandler.renderTasks();
+      TaskRender.renderTasks();
   }
   static async filterTasks(filterOption) {
-    TaskListHandler.taskListElement.innerHTML = '';
+    TaskListDOM.taskListElement.innerHTML = '';
     const tasks = await TaskAPI.getTasks();
     if (tasks.length < 1) {
       return;
@@ -283,19 +268,19 @@ class TaskFilterHandler {
       case FilterOption.Active:
         tasks.forEach((task) => {
           if (!task.completed) {
-            TaskListHandler.renderNewTask(task);
+            TaskRender.renderNewTask(task);
           }
         });
         return;
       case FilterOption.Completed:
         tasks.forEach((task) => {
           if (task.completed) {
-            TaskListHandler.renderNewTask(task);
+            TaskRender.renderNewTask(task);
           }
         });
         return;
       default:
-        tasks.forEach((task) => TaskListHandler.renderNewTask(task));
+        tasks.forEach((task) => TaskRender.renderNewTask(task));
         return;
     }
   }
@@ -304,10 +289,10 @@ class TaskFilterHandler {
     if (!target.dataset.filter) {
       return;
     }
-    if (TaskFilterHandler.previousActiveFilter) {
-      TaskFilterHandler.previousActiveFilter.classList.remove(FilterOption.Active);
+    if (TaskFilterDOM.previousActiveFilter) {
+      TaskFilterDOM.previousActiveFilter.classList.remove(FilterOption.Active);
     }
-    TaskFilterHandler.previousActiveFilter = target;
+    TaskFilterDOM.previousActiveFilter = target;
     const isInitiallyActive = target.classList.contains(FilterOption.Active);
 
     if (isInitiallyActive) {
@@ -320,37 +305,103 @@ class TaskFilterHandler {
   }
   static turnFilters(turnOn) {
     if (turnOn) {
-      TaskFilterHandler.filterButtons.classList.remove(TaskListDOM.hiddenClass);
-      TaskFilterHandler.clearCompletedTaskButton.classList.remove(TaskListDOM.hiddenClass);
+      TaskFilterDOM.filterButtons.classList.remove(ToDoApp.hiddenClass);
+      TaskFilterDOM.clearCompletedTaskButton.classList.remove(ToDoApp.hiddenClass);
     } else {
-      TaskFilterHandler.filterButtons.classList.add(TaskListDOM.hiddenClass);
-      TaskFilterHandler.clearCompletedTaskButton.classList.add(TaskListDOM.hiddenClass);
+      TaskFilterDOM.filterButtons.classList.add(ToDoApp.hiddenClass);
+      TaskFilterDOM.clearCompletedTaskButton.classList.add(ToDoApp.hiddenClass);
     }
   }
   static clearFilters() {
-    if (TaskFilterHandler.previousActiveFilter) {
-      TaskFilterHandler.previousActiveFilter.classList.remove(FilterOption.Active);
-      TaskFilterHandler.defaultFilterOption.classList.add(FilterOption.Active);
-      TaskFilterHandler.previousActiveFilter = TaskFilterHandler.defaultFilterOption;
+    if (TaskFilterDOM.previousActiveFilter) {
+      TaskFilterDOM.previousActiveFilter.classList.remove(FilterOption.Active);
+      TaskFilterDOM.defaultFilterOption.classList.add(FilterOption.Active);
+      TaskFilterDOM.previousActiveFilter = TaskFilterDOM.defaultFilterOption;
     }
   }
 }
-
-class ToDoApp {
-  static async start() {
-    ToDoApp.initElements();
-    await TaskListHandler.renderTasks();
+class TaskRender {
+  static async renderTasks() {
+    TaskListDOM.taskListElement.innerHTML = '';
+    const tasksData = await TaskAPI.getTasks();
+    TaskFilterHandler.turnFilters(false);
+    if (tasksData.length > 0) {
+      TaskFilterHandler.turnFilters(true);
+      TaskFilterHandler.clearFilters();
+      tasksData.forEach((task) => TaskRender.renderNewTask(task));
+    }
   }
-  static initElements() {
-    ToDoFormHandler.addTaskButton = document.querySelector(ToDoFormHandler.addTaskButtonSelector);
-    TaskFilterHandler.clearCompletedTaskButton = document.querySelector(TaskFilterHandler.clearCompletedTaskButtonSelector);
-    ToDoFormHandler.inputTaskTitle = document.querySelector(ToDoFormHandler.inputTaskTitleSelector);
-    TaskListHandler.taskListElement = document.querySelector(TaskListHandler.taskListElementSelector);
-    TaskFilterHandler.filterButtons = document.querySelector(TaskFilterHandler.filterButtonsSelelector);
-    TaskFilterHandler.defaultFilterOption = document.querySelector(TaskFilterHandler.defaultFilterOptionSelector);
+  static renderNewTask(task) {
+    const taskTitleElement = document.createElement('label');
+    taskTitleElement.textContent = task.title;
+    taskTitleElement.classList.add(ToDoApp.inputTaskClass);
+    taskTitleElement.classList.add(task.completed ? `${ToDoApp.completedClass}` : `${ToDoApp.incompletedClass}`);
+    taskTitleElement.dataset.title = task.title;
+
+    const taskElement = document.createElement('li');
+    taskElement.classList.add(ToDoApp.listItemClass);
+    taskElement.dataset.id = task.id;
+    taskElement.innerHTML += `
+    <button class="${ToDoApp.completeButtonClass}" data-action="complete">Complete</button>
+    <button class="${ToDoApp.deleteButtonClass}" data-action="delete">Delete</button>
+    `;
+    taskElement.appendChild(taskTitleElement);
+    TaskListDOM.taskListElement.appendChild(taskElement);
+  }
+}
+class TaskEvents {
+  static addEventListeners() {
+    ToDoFormDOM.addTaskButton.addEventListener('click', ToDoFormHandler.handleAddTask);
+    TaskFilterDOM.clearCompletedTaskButton.addEventListener('click', TaskFilterHandler.clearCompleted);
+    TaskListDOM.taskListElement.addEventListener('click', TaskListHandler.handleCompleteDelete);
+    TaskListDOM.taskListElement.addEventListener('dblclick', TaskListHandler.handleEditTask);
+    TaskListDOM.taskListElement.addEventListener('keydown', TaskListHandler.handleSaveEdittedTask);
+    TaskFilterDOM.filterButtons.addEventListener('click', TaskFilterHandler.handleFilterButtons);
+  }
+}
+class ToDoApp {
+  static body = document.querySelector('body');
+  static listItem = '.list-item';
+  static inputTask = '.input-task';
+  static listItemClass = 'list-item';
+  static inputTaskClass = 'input-task';
+  static completedClass = 'completed';
+  static incompletedClass = 'new';
+  static hiddenClass = 'hidden';
+  static completeButtonClass = 'btn-complete';
+  static deleteButtonClass = 'btn-delete';
+
+  static async renderHTML(body) {
+    const h1 = document.createElement('h1');
+    h1.textContent = 'TODO List';
+
+    const comment = document.createElement('p');
+    comment.classList.add('comment');
+    comment.textContent = 'TIPS:';
+    const comment1 = document.createElement('p');
+    comment1.classList.add('comment');
+    comment1.textContent = 'to edit task double click to it\'s title';
+    const comment2 = document.createElement('p');
+    comment2.classList.add('comment');
+    comment2.textContent = 'to finish task edition click \'Enter\' key';
+    const comment3 = document.createElement('p');
+    comment3.classList.add('comment');
+    comment3.textContent = 'task title saves only after finishing edition';
+
+    ToDoApp.body.appendChild(h1);
+    ToDoApp.body.appendChild(comment);
+    ToDoApp.body.appendChild(comment1);
+    ToDoApp.body.appendChild(comment2);
+    ToDoApp.body.appendChild(comment3);
+  }
+  static async start() {
+    await ToDoApp.renderHTML(ToDoApp.body);
+    await ToDoFormDOM.renderHTML(ToDoApp.body);
+    await TaskListDOM.renderHTML(ToDoApp.body);
+    await TaskFilterDOM.renderHTML(ToDoApp.body);
+    await TaskRender.renderTasks();
+    TaskEvents.addEventListeners();
   }
 }
 
-TaskListDOM.renderHTML();
 ToDoApp.start();
-TaskListDOM.addEventListeners();
