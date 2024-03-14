@@ -5,6 +5,29 @@ const FilterOption = {
   Active: 'active',
   Completed: 'completed',
 };
+class EventEmitter {
+  events;
+  constructor() {
+    this.events = {};
+  }
+
+  subscribe(eventName, callback) {
+    !this.events[eventName] && (this.events[eventName] = []);
+    this.events[eventName].push(callback);
+  }
+
+  unsubscribe(eventName, callback) {
+    this.events[eventName] = this.events[eventName].filter(
+      (eventCallback) => callback !== eventCallback
+    );
+  }
+
+  emit(eventName, ...args) {
+    if (this.events[eventName]) {
+      this.events[eventName].forEach((listener) => listener(...args));
+    }
+  }
+}
 class Task {
   id;
   title;
@@ -71,7 +94,12 @@ class TaskAPI {
 class TaskListDOM {
   static taskListElement;
   static taskListElementClass = 'list';
+  static emitter;
   
+  static async renderNewTaskDOM(taskElement) {
+    TaskListDOM.taskListElement.appendChild(taskElement);
+  }
+
   static async renderHTML(body) {
     TaskListDOM.taskListElement = document.createElement('ul');
     TaskListDOM.taskListElement.classList.add(TaskListDOM.taskListElementClass);
@@ -321,6 +349,7 @@ class TaskFilterHandler {
   }
 }
 class TaskRender {
+  static emitter
   static async renderTasks() {
     TaskListDOM.taskListElement.innerHTML = '';
     const tasksData = await TaskAPI.getTasks();
@@ -346,10 +375,15 @@ class TaskRender {
     <button class="${ToDoApp.deleteButtonClass}" data-action="delete">Delete</button>
     `;
     taskElement.appendChild(taskTitleElement);
-    TaskListDOM.taskListElement.appendChild(taskElement);
+    TaskEvents.emitter.emit('renderNewTask', taskElement);
   }
 }
 class TaskEvents {
+  static emitter;
+  static addEventEmitter() {
+    TaskEvents.emitter = new EventEmitter();
+    TaskEvents.emitter.subscribe('renderNewTask', TaskListDOM.renderNewTaskDOM);
+  }
   static addEventListeners() {
     ToDoFormDOM.addTaskButton.addEventListener('click', ToDoFormHandler.handleAddTask);
     TaskFilterDOM.clearCompletedTaskButton.addEventListener('click', TaskFilterHandler.clearCompleted);
@@ -395,6 +429,7 @@ class ToDoApp {
     ToDoApp.body.appendChild(comment3);
   }
   static async start() {
+    TaskEvents.addEventEmitter();
     await ToDoApp.renderHTML(ToDoApp.body);
     await ToDoFormDOM.renderHTML(ToDoApp.body);
     await TaskListDOM.renderHTML(ToDoApp.body);
